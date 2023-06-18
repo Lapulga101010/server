@@ -107,7 +107,7 @@ app.post('/login', (req, res) => {
       return res.json({ success: false, message: "Invalid username or password" });
     } else {
       const token = jwt.sign({name:user}, "metagroupe", { expiresIn: "1d" });
-      res.cookie("token", token, { httpOnly: true });
+      res.cookie("token", token, { maxAge: 3600000, httpOnly: true });
       return res.json({ success: true, message: "Login successful" });
     }
   });
