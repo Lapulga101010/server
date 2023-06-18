@@ -492,7 +492,7 @@ app.get('/logout',(req,res) => {
   res.cookie('token', {
     httpOnly: true,
     secure: true,
-    sameSite: 'none',
+    sameSite: 'none'
   });
 
     return res.json({Status :"Success"});
