@@ -113,6 +113,6 @@ app.post('/login', (req, res) => {
   });
 });
 
-app.listen( () => {
+
   console.log("Server started .....);
-});
+
