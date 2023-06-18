@@ -492,8 +492,7 @@ app.get('/logout',(req,res) => {
   res.cookie('token', '', {
     expires: new Date(0),
     httpOnly: true,
-    secure: true,
-    sameSite: 'none'
+    secure: true
   });
     return res.json({Status :"Success"});
 
