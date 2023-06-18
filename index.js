@@ -427,12 +427,7 @@ app.post('/login',(req,res)=>{
         if(data.length > 0){
             const name = data[0].username;
             const token = jwt.sign({name},"metagroupe",{expiresIn:'1d'});
-                        res.cookie('token', token, {
-                maxAge: 24 * 60 * 60 * 1000, // Durée de validité du cookie (1 jour)
-                httpOnly: true, // Le cookie ne peut être accédé que par le serveur
-                secure: true, // Le cookie ne sera envoyé que via HTTPS en production
-                sameSite: 'none' // Permet l'envoi du cookie depuis un domaine différent en production
-            });
+                        res.cookie('token', token);
             return res.json({Status :"Success"});
           
         }else{
