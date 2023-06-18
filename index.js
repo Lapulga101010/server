@@ -495,7 +495,6 @@ app.get('/logout',(req,res) => {
     secure: true,
     sameSite: 'none'
   });
-    res.sendStatus(200);
     return res.json({Status :"Success"});
 
 })
