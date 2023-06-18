@@ -428,8 +428,8 @@ app.post('/login',(req,res)=>{
             const name = data[0].username;
             const token = jwt.sign({name},"metagroupe",{expiresIn:'1d'});
 
-  res.cookie('nomDuCookie', 'valeurDuCookie');
-  res.send('Cookie défini !');
+    const token = jwt.sign({name}, "metagroupe");
+    res.cookie("token", token, { httpOnly: true });
             return res.json({Status :"Success"});
           
         }else{
