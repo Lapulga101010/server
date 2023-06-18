@@ -15,7 +15,7 @@ app.use(express.json());
 
 
 app.use(cors({
-    origin:["https://meta-groupe.net"],
+    origin:"https://meta-groupe.net",
     methods : ["POST, GET"],
     credentials : true
 }
@@ -489,5 +489,5 @@ app.get('/logout',(req,res) => {
 
 })
 app.listen(8081, ()=> {
-    console.log("Running 77....");
+    console.log("Running 777....");
 })
