@@ -495,9 +495,7 @@ app.get('/logout',(req,res) => {
     secure: true,
     sameSite: 'none'
   });
-      res.header('Access-Control-Allow-Origin', 'https://meta-groupe.net'); // Remplacez par votre domaine
-  res.header('Access-Control-Allow-Credentials', true);
-  
+
     return res.json({Status :"Success"});
 
 })
