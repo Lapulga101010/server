@@ -489,10 +489,11 @@ app.get('/groupeL',(req,res)=>{
 })
 
 app.get('/logout',(req,res) => {
-  res.cookie('token', '', {
-    expires: new Date(0),
+  res.clearCookie('token', {
     httpOnly: true,
-    secure: true
+    secure: true,
+    sameSite: 'none',
+    domain: 'meta-groupe.net' // Remplacez par votre domaine
   });
     return res.json({Status :"Success"});
 
