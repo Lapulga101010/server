@@ -101,7 +101,7 @@ app.get('/messagesS', verifyUser, (req, res) => {
 app.post('/login', (req, res) => {
   const { user, password } = req.body;
   const sql = "SELECT * FROM user WHERE username = ? AND password = ?";
-  db.query(sql, [username, password], (err, data) => {
+  db.query(sql, [user, password], (err, data) => {
     if (err) return res.json({ success: false, error: err });
     if (data.length === 0) {
       return res.json({ success: false, message: "Invalid username or password" });
