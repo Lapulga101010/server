@@ -29,7 +29,7 @@ const db = mysql.createConnection({
 });
 const verifyUser = (req,res,next) =>{
     const token = req.cookies.token;
-
+console.log(token);
     if(!token){
         return res.json({Message : "Provaide tokken please"});
     }else{
@@ -84,7 +84,7 @@ const storage = multer.diskStorage({
 app.get('/',verifyUser,(req,res)=>{
 
     return res.json({Status :"Success" ,name:req.name});
-
+  
 })
 app.get('/info',(req,res)=>{
     const token = req.cookies.token;
