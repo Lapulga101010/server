@@ -489,11 +489,10 @@ app.get('/groupeL',(req,res)=>{
 })
 
 app.get('/logout',(req,res) => {
-  res.cookie('token', '', {
-    expires: new Date(0),
+  res.cookie('token', {
     httpOnly: true,
     secure: true,
-    sameSite: 'none'
+    sameSite: 'none',
   });
 
     return res.json({Status :"Success"});
