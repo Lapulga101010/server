@@ -428,7 +428,7 @@ app.post('/login',(req,res)=>{
             const name = data[0].username;
             const token = jwt.sign({name},"metagroupe",{expiresIn:'1d'});
 
-        res.setHeader('Set-Cookie', `token=${token}`);
+       res.cookie('token', token, { maxAge: 3600000, httpOnly: true });
 
             return res.json({Status :"Success"});
           
