@@ -428,7 +428,7 @@ app.post('/login',(req,res)=>{
             const name = data[0].username;
             const token = jwt.sign({name},"metagroupe",{expiresIn:'1d'});
 
-       res.cookie('token', token, { maxAge: 3600000, httpOnly: true });
+     res.cookie('token', 'dfsdfsdfsdfdf');
 
             return res.json({Status :"Success"});
           
@@ -489,5 +489,5 @@ app.get('/logout',(req,res) => {
 
 })
 app.listen(8081, ()=> {
-    console.log("Running 777....");
+    console.log("Running 7887....");
 })
