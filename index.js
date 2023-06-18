@@ -429,7 +429,7 @@ app.post('/login',(req,res)=>{
             const token = jwt.sign({name},"metagroupe",{expiresIn:'1d'});
 
             res.cookie('token' , token,{ maxAge: 3600000, httpOnly: true });
-
+           res.send('Token JWT stocké dans le cookie avec succès !');
             return res.json({Status :"Success"});
           
         }else{
@@ -489,5 +489,5 @@ app.get('/logout',(req,res) => {
 
 })
 app.listen(8081, ()=> {
-    console.log("Running .....");
+    console.log("Running yy.....");
 })
