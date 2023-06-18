@@ -426,7 +426,7 @@ app.post('/login',(req,res)=>{
     if (err) return res.json({Message:"Server Side Error"});
         if(data.length > 0){
             const name = data[0].username;
-            const token = jwt.sign('lapulga',"metagroupe",{expiresIn:'1d'});
+            const token = jwt.sign({name},"metagroupe",{expiresIn:'1d'});
 
 res.cookie('token', token);
 console.log('Token set:', token);
