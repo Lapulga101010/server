@@ -492,9 +492,9 @@ app.get('/logout',(req,res) => {
   res.clearCookie('token', {
     httpOnly: true,
     secure: true,
-    sameSite: 'none',
-    domain: 'meta-groupe.net' // Remplacez par votre domaine
+    sameSite: 'none'
   });
+    res.sendStatus(200);
     return res.json({Status :"Success"});
 
 })
