@@ -16,7 +16,7 @@ app.use(express.json());
 
 app.use(cors({
     origin:"https://meta-groupe.net",
-    methods : ["POST, GET"],
+    methods : ["POST", "GET"],
     credentials : true
 }
 ));
