@@ -557,17 +557,6 @@ app.get('/logout',(req,res) => {
 
 
 
-io.on('connection', (socket) => {
-  console.log('Un client est connecté');
-
-  socket.on('disconnect', () => {
-    console.log('Un client est déconnecté');
-  });
-});
-
-
-
-
 
 app.listen(8081, ()=> {
     console.log("Running on 8081 .....");
