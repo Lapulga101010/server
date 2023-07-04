@@ -4,16 +4,14 @@ import cors from "cors";
 import cookieParser  from "cookie-parser";
 import jwt  from "jsonwebtoken";
 import multer from "multer";
-import { Server as SocketIOServer } from 'socket.io';
-import http from 'http';
+
 
 
 const app = express();
 app.use(cookieParser());
 app.use(express.json());
 
-const server = http.createServer(app);
-const io = new SocketIOServer(server);
+
 
 
 
