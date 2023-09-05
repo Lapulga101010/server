@@ -57,6 +57,18 @@ const verifyUser = (req,res,next) =>{
         })
     }
 }
+app.use((req, res, next) => {
+  // Réinitialisez le cookie "token" à chaque requête
+  res.cookie('token', token, {
+    maxAge: inactivityTimeout, // Réglez la durée d'expiration à nouveau
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none'
+  });
+
+  // Poursuivez le traitement de la requête
+  next();
+});
 
 
 const upload = multer({ dest: 'upload/' }); // Indiquez le répertoire de destination pour stocker les fichiers
