@@ -16,7 +16,7 @@ app.use(express.json());
 
 
 app.use(cors({
-  origin:"http://de06.net",
+  origin:"https://de06.net",
   methods : ["POST, GET"],
   credentials : true
 }
