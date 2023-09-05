@@ -57,6 +57,9 @@ const verifyUser = (req,res,next) =>{
         })
     }
 }
+
+const inactivityTimeout = 5 * 60 * 1000; // 30 minutes en millisecondes
+
 app.use((req, res, next) => {
   // Réinitialisez le cookie "token" à chaque requête
   res.cookie('token', token, {
