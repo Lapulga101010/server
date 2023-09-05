@@ -28,6 +28,18 @@ const db = mysql.createConnection({
   password: "Metagroupe@",
   database: "yvzmfbmz_de06",
 });
+
+
+
+db.connect((err) => {
+  if (err) {
+    console.error('Erreur de connexion à la base de données :', err);
+    throw err; // Vous pouvez gérer l'erreur ici de la manière qui vous convient
+  }
+  console.log('Connexion à la base de données réussie');
+  // Vous pouvez exécuter des requêtes SQL ici
+});
+
 const verifyUser = (req,res,next) =>{
     const token = req.cookies.token;
 
