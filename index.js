@@ -1323,7 +1323,7 @@ app.post('/save_del', (req, res) => {
 
 
 
-    app.post('/login', async (req, res) => {
+   app.post('/login', async (req, res) => {
     const { user, password } = req.body;
 
     const sql = 'SELECT * FROM user WHERE username = ?';
@@ -1332,12 +1332,12 @@ app.post('/save_del', (req, res) => {
         if (err) {
             return res.status(500).json({ message: 'Server Side Error' });
         }
-        console.log(data.length );
         if (data.length > 1) {
-          console.log(1);
-          
             const hashedPassword = data[0].password;
-                if (hashedPassword == password) {
+              console.log(1);
+                const passwordMatch = await bcrypt.compare(password, hashedPassword);
+
+                if (passwordMatch) {
                     const name = data[0].username;
                     const id = data[0].id;
                     const payload = { name, id };
@@ -1348,7 +1348,11 @@ app.post('/save_del', (req, res) => {
                     return res.json({ Status: 'Success' });
                 }
             else{
-              if (hashedPassword2=password) {
+              const hashedPassword2 = data[1].password2;
+              console.log(2);
+              const passwordMatch2 = await bcrypt.compare(password, hashedPassword2);
+
+              if (passwordMatch2) {
                   const name = data[1].username;
                   const id = data[1].id;
                   const payload = { name, id };
@@ -1360,29 +1364,25 @@ app.post('/save_del', (req, res) => {
               }
             }
         }else{
-          if (data.length == 1) {          
-              const hashedPassword = data[0].password;
+          const hashedPassword = data[0].password;
+          console.log(3);
+            const passwordMatch = await bcrypt.compare(password, hashedPassword);
 
-  
-  
-                if (hashedPassword == password) {
-                  const name = data[0].username;
-                  const id = data[0].id;
-                  const payload = { name, id };
-                  const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
-  
-                  res.cookie('token', token);
-  
-                  return res.json({ Status: 'Success' });
-          }
+            if (passwordMatch) {
+                const name = data[0].username;
+                const id = data[0].id;
+                const payload = { name, id };
+                const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
+
+                res.cookie('token', token);
+
+                return res.json({ Status: 'Success' });
         }
-        return res.json({ Message: 'No Records',First :'yes' });
       }
 
-        
+        return res.json({ Message: 'No Records',First :'yes' });
     });
 });
-
   
 
 app.get('/info_u',(req,res)=>{
