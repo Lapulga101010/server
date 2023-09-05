@@ -76,6 +76,48 @@ app.get('/',verifyUser,(req,res)=>{
 
 
 
+const hashedPassword = await bcrypt.hash('gm', 10);
+console.log(hashedPassword);
+
+
+app.post('/changePassword', async (req, res) => {
+  const { username, currentPassword, newPassword } = req.body;
+  const SELECT_QUERY = 'SELECT * FROM user WHERE username = ?';
+
+  try {
+    connection.query(SELECT_QUERY, [username], async (err, results) => {
+      if (err) {
+        console.error('Error fetching user from MySQL:', err);
+        return res.status(500).json({ error: 'Internal server error.' });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
+      const user = results[0];
+      const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+      if (isPasswordCorrect) {
+        const newPasswordHash = await bcrypt.hash(newPassword, 10); // saltRounds = 10
+        const UPDATE_QUERY = 'UPDATE users SET password = ? WHERE id = ?';
+        connection.query(UPDATE_QUERY, [newPasswordHash, user.id], (err, result) => {
+          if (err) {
+            console.error('Error updating password in MySQL:', err);
+            return res.status(500).json({ error: 'Internal server error.' });
+          }
+          res.status(200).json({ message: 'Password updated successfully.' });
+        });
+      } else {
+        res.status(401).json({ error: 'Invalid current password.' });
+      }
+    });
+  } catch (error) {
+    console.error('Error updating password:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+
 
 
 
