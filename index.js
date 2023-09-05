@@ -1443,6 +1443,7 @@ app.post('/save_del', (req, res) => {
               }
             }
         }else{
+              if (data.length > 0) {
           const hashedPassword = data[0].password;
           console.log(3);
             const passwordMatch = await bcrypt.compare(password, hashedPassword);
@@ -1463,6 +1464,7 @@ app.post('/save_del', (req, res) => {
                 return res.json({ Status: 'Success' });
         }
       }
+        }
 
         return res.json({ Message: 'No Records',First :'yes' });
     });
