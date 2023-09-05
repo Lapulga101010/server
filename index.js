@@ -4,7 +4,7 @@ import cors from "cors";
 import cookieParser  from "cookie-parser";
 import jwt  from "jsonwebtoken";
 import multer from "multer";
-
+import bcrypt from "bcrypt";
 
 
 const app = express();
