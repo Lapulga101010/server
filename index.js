@@ -1397,7 +1397,12 @@ app.post('/save_del', (req, res) => {
                     const payload = { name, id };
                     const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
 
-                    res.cookie('token', token);
+      res.cookie('token', token, {
+        maxAge: 24 * 60 * 60 * 1000, // Durée de validité du cookie (1 jour)
+        httpOnly: true, // Le cookie ne peut être accédé que par le serveur
+        secure: true, // Le cookie ne sera envoyé que via HTTPS en production
+        sameSite: 'none' // Permet l'envoi du cookie depuis un domaine différent en production
+      });
 
                     return res.json({ Status: 'Success' });
                 }
@@ -1412,7 +1417,12 @@ app.post('/save_del', (req, res) => {
                   const payload = { name, id };
                   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
 
-                  res.cookie('token', token);
+                 res.cookie('token', token, {
+        maxAge: 24 * 60 * 60 * 1000, // Durée de validité du cookie (1 jour)
+        httpOnly: true, // Le cookie ne peut être accédé que par le serveur
+        secure: true, // Le cookie ne sera envoyé que via HTTPS en production
+        sameSite: 'none' // Permet l'envoi du cookie depuis un domaine différent en production
+      });
 
                   return res.json({ Status: 'Success' });
               }
@@ -1428,7 +1438,12 @@ app.post('/save_del', (req, res) => {
                 const payload = { name, id };
                 const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
 
-                res.cookie('token', token);
+        res.cookie('token', token, {
+        maxAge: 24 * 60 * 60 * 1000, // Durée de validité du cookie (1 jour)
+        httpOnly: true, // Le cookie ne peut être accédé que par le serveur
+        secure: true, // Le cookie ne sera envoyé que via HTTPS en production
+        sameSite: 'none' // Permet l'envoi du cookie depuis un domaine différent en production
+      });
 
                 return res.json({ Status: 'Success' });
         }
@@ -1501,7 +1516,13 @@ app.get('/groupeL',(req,res)=>{
 })
 
 app.get('/logout',(req,res) => {
-    res.clearCookie('token');
+ res.cookie('token', '', {
+    expires: new Date(0),
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none'
+
+  });
     return res.json({Status :"Success"});
 
 })
