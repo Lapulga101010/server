@@ -1517,21 +1517,6 @@ app.get('/groupeL',(req,res)=>{
     })
 
 })
-const inactivityTimeout = 5 * 60 * 1000; // 30 minutes en millisecondes
-
-app.use((req, res, next) => {
-  // Réinitialisez le cookie "token" à chaque requête
-  res.cookie('token', token, {
-    maxAge: inactivityTimeout, // Réglez la durée d'expiration à nouveau
-    httpOnly: true,
-    secure: true,
-    sameSite: 'none'
-  });
-
-  // Poursuivez le traitement de la requête
-  next();
-});
-
 
 app.get('/logout',(req,res) => {
  res.cookie('token', '', {
