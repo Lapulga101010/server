@@ -23,12 +23,11 @@ app.use(cors({
 ));
 
 const db = mysql.createConnection({
-  host: "80.246.1.157",
+  host: "81.146.1.15",
   user: "yvzmfbmz_yvzmfbmz",
-  password: "Metagroupe",
+  password: "Metagroupe@",
   database: "yvzmfbmz_de06",
 });
-
 
 
 db.connect((err) => {
