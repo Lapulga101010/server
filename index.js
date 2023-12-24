@@ -2271,7 +2271,9 @@ bcrypt.compare(password, hashedPassword, (err, result) => {
       const payload = { name, id };
       const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
   
-    res.cookie('token', token, { secure: true, httpOnly: false, sameSite: 'None', domain: 'de06.net' });
+    res.cookie('token', token, {domain: 'de06.ner',
+        maxAge: 900000,
+        httpOnly: true,});
 
 
   
@@ -2295,7 +2297,9 @@ if (result){
   const payload = { name, id };
   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
 
-    res.cookie('token', token, { secure: true, httpOnly: false, sameSite: 'None', domain: 'de06.net' });
+    res.cookie('token', token, {domain: 'de06.ner',
+        maxAge: 900000,
+        httpOnly: true,});
 
   return res.json({ Status: 'Success' });
 }
@@ -2327,7 +2331,9 @@ return res.json({ Message: 'incorect' });
                   const payload = { name, id };
                   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
               
-    res.cookie('token', token, { secure: true, httpOnly: false, sameSite: 'None', domain: 'de06.net' });
+    res.cookie('token', token,{domain: 'de06.ner',
+        maxAge: 900000,
+        httpOnly: true,});
 
               
                   return res.json({ Status: 'Success' });
@@ -2455,5 +2461,5 @@ app.get('/logout',(req,res) => {
 
 
 app.listen(8081,()=> {
-    console.log("Running new 6 .....");
+    console.log("Running new 7 .....");
 })
