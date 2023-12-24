@@ -2273,9 +2273,9 @@ bcrypt.compare(password, hashedPassword, (err, result) => {
       const payload = { name, id };
       const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
   
-  res.cookie('token', token, { 
-  httpOnly: true, 
-  maxAge: 3600000  // Durée de vie du cookie en millisecondes (par exemple, 1 heure)
+res.cookie('token', token, { 
+  httpOnly: true,
+  secure: true  // Pour les environnements HTTPS
 });
 
 
@@ -2302,9 +2302,10 @@ if (result){
   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
 
 res.cookie('token', token, { 
-  httpOnly: true, // Spécifiez le chemin si nécessaire
-  maxAge: 3600000  // Durée de vie du cookie en millisecondes (par exemple, 1 heure)
+  httpOnly: true,
+  secure: true  // Pour les environnements HTTPS
 });
+
 
   return res.json({ Status: 'Success' });
 }
@@ -2336,9 +2337,9 @@ return res.json({ Message: 'incorect' });
                   const payload = { name, id };
                   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
               
-              res.cookie('token', token, { 
-  httpOnly: true, 
-  maxAge: 3600000  // Durée de vie du cookie en millisecondes (par exemple, 1 heure)
+res.cookie('token', token, { 
+  httpOnly: true,
+  secure: true  // Pour les environnements HTTPS
 });
 
               
@@ -2469,5 +2470,5 @@ app.get('/logout',(req,res) => {
 
 
 app.listen(8081,()=> {
-    console.log("Running new 2 .....");
+    console.log("Running new 3 .....");
 })
