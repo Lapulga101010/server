@@ -13,8 +13,6 @@ app.use(express.json());
 
 
 
-
-
 app.use(cors({
   origin:"https://de06.net",
   methods : ["POST, GET"],
@@ -2273,8 +2271,11 @@ bcrypt.compare(password, hashedPassword, (err, result) => {
       const payload = { name, id };
       const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
   
-  res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Path=/; Secure; SameSite=Strict`);
-
+  res.cookie('token', token, { 
+    httpOnly: true,
+    secure: true,  // Assurez-vous que vous utilisez HTTPS
+    sameSite: 'strict'
+  });
 
   
       return res.json({ Status: 'Success' });
@@ -2297,8 +2298,11 @@ if (result){
   const payload = { name, id };
   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
 
-  res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Path=/; Secure; SameSite=Strict`);
-
+  res.cookie('token', token, { 
+    httpOnly: true,
+    secure: true,  // Assurez-vous que vous utilisez HTTPS
+    sameSite: 'strict'
+  });
 
   return res.json({ Status: 'Success' });
 }
@@ -2330,7 +2334,11 @@ return res.json({ Message: 'incorect' });
                   const payload = { name, id };
                   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
               
-  res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Path=/; Secure; SameSite=Strict`);
+  res.cookie('token', token, { 
+    httpOnly: true,
+    secure: true,  // Assurez-vous que vous utilisez HTTPS
+    sameSite: 'strict'
+  });
 
               
                   return res.json({ Status: 'Success' });
@@ -2457,8 +2465,6 @@ app.get('/logout',(req,res) => {
 })
 
 
-
-
 app.listen(8081,()=> {
-    console.log("Running new 4 .....");
+    console.log("Running new 5 .....");
 })
