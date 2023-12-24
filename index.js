@@ -2273,10 +2273,7 @@ bcrypt.compare(password, hashedPassword, (err, result) => {
       const payload = { name, id };
       const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
   
-res.cookie('token', token, { 
-  httpOnly: true,
-  sameSite: 'strict'  // ou 'lax'
-});
+  res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Path=/; Secure; SameSite=Strict`);
 
 
   
@@ -2300,10 +2297,7 @@ if (result){
   const payload = { name, id };
   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
 
-res.cookie('token', token, { 
-  httpOnly: true,
-  sameSite: 'strict'  // ou 'lax'
-});
+  res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Path=/; Secure; SameSite=Strict`);
 
 
   return res.json({ Status: 'Success' });
@@ -2336,10 +2330,8 @@ return res.json({ Message: 'incorect' });
                   const payload = { name, id };
                   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
               
-res.cookie('token', token, { 
-  httpOnly: true,
-  sameSite: 'strict'  // ou 'lax'
-});
+  res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Path=/; Secure; SameSite=Strict`);
+
               
                   return res.json({ Status: 'Success' });
                 }
