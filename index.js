@@ -1,11 +1,11 @@
-import express  from "express";
-import mysql from "mysql";
-import cors from "cors";
-import cookieParser  from "cookie-parser";
-import jwt  from "jsonwebtoken";
-import multer from "multer";
-import bcrypt from "bcrypt";
-
+const express = require("express");
+const http = require('http');
+const mysql = require("mysql2");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+const multer = require("multer");
+const bcrypt = require('bcryptjs');
 
 const app = express();
 app.use(cookieParser());
