@@ -2275,9 +2275,8 @@ bcrypt.compare(password, hashedPassword, (err, result) => {
   
 res.cookie('token', token, { 
   httpOnly: true,
-  secure: true  // Pour les environnements HTTPS
+  sameSite: 'strict'  // ou 'lax'
 });
-
 
 
   
@@ -2303,7 +2302,7 @@ if (result){
 
 res.cookie('token', token, { 
   httpOnly: true,
-  secure: true  // Pour les environnements HTTPS
+  sameSite: 'strict'  // ou 'lax'
 });
 
 
@@ -2339,9 +2338,8 @@ return res.json({ Message: 'incorect' });
               
 res.cookie('token', token, { 
   httpOnly: true,
-  secure: true  // Pour les environnements HTTPS
+  sameSite: 'strict'  // ou 'lax'
 });
-
               
                   return res.json({ Status: 'Success' });
                 }
@@ -2470,5 +2468,5 @@ app.get('/logout',(req,res) => {
 
 
 app.listen(8081,()=> {
-    console.log("Running new 3 .....");
+    console.log("Running new 4 .....");
 })
