@@ -2273,7 +2273,8 @@ bcrypt.compare(password, hashedPassword, (err, result) => {
   
     res.cookie('token', token, {domain: 'hserver-metagroupe.onrender.com',
         maxAge: 900000,
-        httpOnly: true,});
+        httpOnly: true,
+            sameSite: 'none'});
 
 
   
@@ -2299,7 +2300,8 @@ if (result){
 
     res.cookie('token', token, {domain: 'hserver-metagroupe.onrender.com',
         maxAge: 900000,
-        httpOnly: true,});
+        httpOnly: true,
+            sameSite: 'none'});
 
   return res.json({ Status: 'Success' });
 }
@@ -2331,10 +2333,10 @@ return res.json({ Message: 'incorect' });
                   const payload = { name, id };
                   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
               
-    res.cookie('token', token,{domain: 'hserver-metagroupe.onrender.com',
+    res.cookie('token', token, {domain: 'hserver-metagroupe.onrender.com',
         maxAge: 900000,
-        httpOnly: true,});
-
+        httpOnly: true,
+            sameSite: 'none'});
               
                   return res.json({ Status: 'Success' });
                 }
@@ -2461,5 +2463,5 @@ app.get('/logout',(req,res) => {
 
 
 app.listen(8081,()=> {
-    console.log("Running new 9 .....");
+    console.log("Running new 10 .....");
 })
