@@ -17,7 +17,7 @@ const server = http.createServer(app);
 
 
 app.use(cors({
-  origin:"http://89.116.38.84",
+  origin:"https://tensikde.net",
   methods : ["POST, GET"],
   credentials : true
 }
