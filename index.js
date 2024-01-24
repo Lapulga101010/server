@@ -6,10 +6,13 @@ const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const bcrypt = require('bcryptjs');
-
+const socketIo = require('socket.io');
 const app = express();
 app.use(cookieParser());
 app.use(express.json());
+
+const server = http.createServer(app);
+
 
 
 
@@ -29,30 +32,24 @@ const db = mysql.createConnection({
 });
 
 
-
-const fs = require('fs'); // Importez le module 'fs'
-
-// Route pour supprimer un fichier
-
-
-
-app.use(express.json());
-
-// Configure multer to handle file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "/upload/"); // Specify the directory where uploaded files will be stored
-  },
-  filename: function (req, file, cb) {
-    // Generate a unique name for the uploaded file
-    cb(null,file.originalname);
-  },
+const io = socketIo(server, {
+  cors: {
+    origin: "http://89.116.38.84",
+    methods: ["GET", "POST","DELETE"]
+  }
 });
 
-const upload = multer({ storage: storage });
 
-app.use(express.json());
 
+io.on('connection', (socket) => {
+  console.log('Nouvelle connexion socket');
+  socket.on('exampleEvent', (data) => {
+    console.log(data);
+  });
+  socket.on('disconnect', () => {
+    console.log('Socket déconnectée.');
+  });
+});
 
 
 app.get('/messages', (req, res) => {
@@ -71,60 +68,63 @@ app.get('/messages', (req, res) => {
       const user = decoded.name;
       const id = decoded.id;
       const sql =
-        'SELECT messages.id_m,messages.message,messages.id_r,messages.nom,messages.usernameA,messages.username,messages.lu,messages.formulaire,messages.groupe,messages.im,messages.date,messages.objet,etab.LIBETAB,etab.LIBETABA,etab.CODETAB FROM messages INNER JOIN etab ON messages.usernameA = etab.CODETAB WHERE messages.id_r = ? ORDER BY date DESC ';
-
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.flushHeaders();
-
-      const sendMessages = () => {
-        if (res.finished) {
-          console.log('Connection is closed');
-          clearInterval(intervalId);
-          res.end();
-          return;
-        }
-
-        db.query(sql, [id], (err, results) => {
-          if (err) {
-            console.error('Erreur lors de la récupération des messages : ' + err);
-            return;
-          }
-
-          const messages = JSON.stringify(results);
-          res.write(`data: ${messages}\n\n`);
-        });
-      };
-
-      // Première exécution immédiate de sendMessages
-      sendMessages();
-
-      // Ensuite, démarrez l'intervalle
-      const intervalId = setInterval(sendMessages, 5000);
-
-      req.on('close', () => {
-        clearInterval(intervalId);
-        res.end();
-      });
+        'SELECT * FROM messages INNER JOIN etab ON messages.usernameA = etab.CODETAB WHERE messages.id_r = ? ORDER BY date DESC ';
+        db.query(sql,[id],(err,data)=>{
+          if(err) return res.json(data);
+          return res.json(data)|| [];
+          
+      })
     }
-  });
+  })
+})
+
+
+
+
+const fs = require('fs'); // Importez le module 'fs'
+
+// Route pour supprimer un fichier
+
+// Configuration de multer pour l'upload de fichiers
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'upload/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${file.originalname}`);
+  },
 });
 
+const upload = multer({ storage: storage });
 
+// Route pour gérer l'upload de fichiers
+app.post('/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send('Aucun fichier uploadé.');
+  }
+  res.send('Fichier uploadé avec succès.');
+});
 
+const path = require('path');
+app.use(express.json());
+const filePath = path.join(__dirname, 'upload/');
 
-
-app.get('/upload/:filename', (req, res) => {
+app.delete('/delete/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, 'upload/', filename);
-
-  res.download(filePath, (err) => {
+console.log(filePath);
+  // Supprimez le fichier du système de fichiers
+  fs.unlink(filePath, (err) => {
     if (err) {
-      console.error(err);
-      res.status(404).send('Fichier non trouvé');
+      console.error('Erreur lors de la suppression du fichier:', err);
+      return res.status(500).send(`Erreur lors de la suppression du fichier: ${err.message}`);
     }
+    res.send('Fichier supprimé avec succès.');
   });
-});
+})
+
+
+
 
 
 app.post("/send", upload.single("file"), (req, res) => {
@@ -209,6 +209,7 @@ app.post("/send", upload.single("file"), (req, res) => {
                 sendResponse();
               } else {
                 console.log("Données insérées avec succès.");
+                io.emit('nouvelUtilisateur');
                 groupesProcessed = true;
                 sendResponse(); // Send the response here
               }
@@ -221,7 +222,6 @@ app.post("/send", upload.single("file"), (req, res) => {
       }
 
       if (users && users.length > 0) {
-        console.log("user");
         db.query(query, [values], (error, results) => {
           if (error) {
             console.error(
@@ -233,6 +233,11 @@ app.post("/send", upload.single("file"), (req, res) => {
             sendResponse();
           } else {
             console.log("Données insérées avec succès.");
+            io.emit('form&Sends', { idu: users.map((user) => user.id) }, () => {
+              // Le code ici s'exécute lorsque l'événement est émis
+      
+            });
+          
             usersProcessed = true;
             sendResponse(); // Send the response here
           }
@@ -269,9 +274,7 @@ const verifyUser = (req,res,next) =>{
 
 
 app.get('/',verifyUser,(req,res)=>{
-
     return res.json({Status :"Success" ,name:req.name});
-
 })
 
 db.connect((err) => {
@@ -282,56 +285,6 @@ db.connect((err) => {
   }
 
 });
-
-
-
-
-
-app.post('/deleteFile', (req, res) => {
-  const { filename } = req.body;
-console.log(filename);
-  // Chemin complet vers le fichier que vous souhaitez supprimer
-  const filePath = path.join(__dirname, 'uploads', filename);
-
-  // Vérifiez si le fichier existe avant de le supprimer
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath); // Supprimez le fichier
-    res.status(200).send('Fichier supprimé avec succès');
-  } else {
-    res.status(404).send('Le fichier n\'existe pas');
-  }
-});
-
-app.delete('/upload/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const filePath = path.join(__dirname, 'upload/', filename);
-
-  fs.unlink(filePath, (err) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send('Erreur lors de la suppression du fichier');
-    } else {
-      console.log(`Fichier ${filename} supprimé avec succès.`);
-      res.status(200).send('Fichier supprimé avec succès');
-    }
-  });
-});
-
-
-
-
-
-
-
-
-const { fileURLToPath } = require('url');
-const path = require('path');
-
-app.post("/send2", upload.single("file"), (req, res) => {});
-// Serve uploaded files statically
-app.use("/upload", express.static(path.join(__dirname, "uploads")));
-
-
 
 
 
@@ -756,6 +709,7 @@ app.get('/abs',(req,res)=>{
       
   })
 })
+
 app.get('/abs_down',(req,res)=>{
   const token = req.cookies.token;
   jwt.verify(token, "metagroupe", (err, decoded) => {
@@ -777,6 +731,7 @@ app.get('/abs_down',(req,res)=>{
       
   })
 })
+
 app.get('/note_down',(req,res)=>{
   const token = req.cookies.token;
   jwt.verify(token, "metagroupe", (err, decoded) => {
@@ -832,7 +787,6 @@ app.post('/up', (req, res) => {
 });
 
 
-
 app.post('/updateEtablissement', (req, res) => {
   const token = req.cookies.token;
   jwt.verify(token, "metagroupe", (err, decoded) => {
@@ -883,7 +837,7 @@ app.get('/note',(req,res)=>{
 
   const user = req.name;
 
-  const sql="SELECT * FROM note WHERE affect = ?";
+  const sql="SELECT * FROM note WHERE primaire = ?";
   db.query(sql,[user],(err,data)=>{
       if(err) return res.json(data);
 
@@ -940,12 +894,11 @@ app.post('/statut_abs', (req, res) => {
       res.status(500).json({ error: 'Erreur lors de la mise à jour des données' });
     } else {
       console.log('Données mises à jour avec succès !');
-      res.json({ message: 'Mise à jour réussie' });
+      io.emit('abs');
+           res.json({ message: 'Mise à jour réussie' });
     }
   });
 });
-
-
 
 
 app.post('/statut_suivi', (req, res) => {
@@ -963,6 +916,7 @@ app.post('/statut_suivi', (req, res) => {
     }
   });
 });
+
 app.post('/statut_suiviA', (req, res) => {
 
   const abs = req.body.abs; // Access the 'abs' value from the request body
@@ -1102,8 +1056,6 @@ app.post('/Reset_suiviA', (req, res) => {
 
 
 
-
-
 app.post('/statut_note', (req, res) => {
   const note = req.body.note; // Access the 'abs' value from the request body
   const updateQuery = 'UPDATE statut_abs_note SET note = ?';
@@ -1118,6 +1070,7 @@ app.post('/statut_note', (req, res) => {
     }
   });
 });
+
 app.post('/updateUser', (req, res) => {
   const token = req.cookies.token;
   jwt.verify(token, "metagroupe", (err, decoded) => {
@@ -1153,6 +1106,7 @@ app.post('/updateUser', (req, res) => {
     }
   });
 });
+
 
 // Mettre à jour l'établissement
 app.post('/updateEtab', (req, res) => {
@@ -1264,19 +1218,6 @@ const user = req.name;
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 app.get('/del_m' ,(req,res)=>{
   const token = req.cookies.token;
   jwt.verify(token, "metagroupe", (err, decoded) => {
@@ -1299,6 +1240,7 @@ const user = req.name;
       
   })
 })
+
 app.get('/save_m' ,(req,res)=>{
   const token = req.cookies.token;
   jwt.verify(token,"metagroupe",(err , decoded)=>{
@@ -1321,8 +1263,6 @@ const user = req.name;
   })
 })
 
-
-
 app.get('/messagesS' ,(req,res)=>{
     const token = req.cookies.token;
     jwt.verify(token,"metagroupe",(err , decoded)=>{
@@ -1343,8 +1283,6 @@ const user = req.id;
     })
 })
 
-
-
 app.get('/forms' ,(req,res)=>{
   const token = req.cookies.token;
   jwt.verify(token,"metagroupe",(err , decoded)=>{
@@ -1364,10 +1302,6 @@ const user = req.name;
       
   })
 })
-
-
-
-
 
 app.post('/deleteGroups', (req, res) => {
   const groupIDsToDelete = req.body.groups;
@@ -1396,9 +1330,6 @@ console.log(groupIDsToDelete);
     });
   });
 });
-
-
-
 
 app.get('/form_down' ,(req,res)=>{
   const token = req.cookies.token;
@@ -1440,7 +1371,6 @@ const user = req.name;
   })
 })
 
-
 app.post("/updateAbs", (req, res) => {
   const VMAT = req.body.VMAT;
 
@@ -1456,8 +1386,6 @@ app.post("/updateAbs", (req, res) => {
     }
   });
 });
-
-
 
 app.get('/statut' ,(req,res)=>{
   const token = req.cookies.token;
@@ -1478,8 +1406,6 @@ const user = req.name;
       
   })
 })
-
-
 
 app.get('/statutSuivi' ,(req,res)=>{
   const token = req.cookies.token;
@@ -1521,7 +1447,6 @@ const user = req.name;
   })
 })
 
-
 app.get('/mes/:id_m' ,(req,res)=>{
     const token = req.cookies.token;
     jwt.verify(token,"metagroupe",(err , decoded)=>{
@@ -1545,10 +1470,6 @@ const user = req.name;
         
     })
 })
-
-
-
-
 
 app.get('/forval/:id_m' ,(req,res)=>{
   const token = req.cookies.token;
@@ -1574,6 +1495,29 @@ const user = req.name;
   })
 })
 
+app.get('/forvalG/:id_m' ,(req,res)=>{
+  const token = req.cookies.token;
+  jwt.verify(token,"metagroupe",(err , decoded)=>{
+      if(err){
+  return res.json({Message : "Auth err"});
+      }
+      else{
+          req.name = decoded.name;
+         
+      }
+  })
+  const userId = req.params.id_m;
+
+const user = req.name;
+
+  const sql="SELECT * FROM valform INNER JOIN etab ON valform.username = etab.CODETAB WHERE grou_m = ?";
+
+  db.query(sql,[userId],(err,data)=>{
+      if(err) return res.json(data);
+      return res.json(data)|| [];
+      
+  })
+})
 
 app.get('/for/:id_m' ,(req,res)=>{
     const token = req.cookies.token;
@@ -1646,9 +1590,9 @@ app.post('/val/:id_m', (req, res) => {
   });
 });
 
-
-
 app.post('/mes_del/:id_m', (req, res) => {
+
+  
   const userId = req.params.id_m;
   const insertQuery = 'INSERT INTO del_m (id_m) SELECT id_m FROM messages WHERE id_m IN (?)';
   const deleteQuery = 'DELETE FROM messages WHERE id_m IN (?)';
@@ -1695,21 +1639,21 @@ app.post('/mes_save/:id_m', (req, res) => {
   });
 });
 
-
 app.post('/lu/:id_m', (req, res) => {
+
   const token = req.cookies.token;
-  jwt.verify(token, "metagroupe", (err, decoded) => {
-    if (err) {
-      return res.json({ Message: "Auth err" });
-    } else {
-      req.name = decoded.name;
-    }
-  });
+
   
-
-  const userId = req.params.id_m;
-  const user = req.name;
-
+  jwt.verify(token,"metagroupe",(err , decoded)=>{
+    if(err){
+return res.json({Message : "Auth err"});
+    }
+    else{
+        req.id = decoded.id;
+    }
+})
+const id = req.id;
+const userId = req.params.id_m;
   const sql = "UPDATE `messages` SET `lu`='1', im = 0 WHERE id_m= ? ";
 
   db.query(sql, [userId], (error, results) => {
@@ -1717,15 +1661,14 @@ app.post('/lu/:id_m', (req, res) => {
       console.error('Une erreur s\'est produite lors de l\'insertion des données:', error);
       res.sendStatus(500);
     } else {
-      console.log('Données insérées avec succès.');
+      io.emit('lu', { idu: id }, () => {
+        // Le code ici s'exécute lorsque l'événement est émis
+
+      });
       res.sendStatus(200);
     }
   });
 });
-
-
-
-
 
 app.post('/changePassword', async (req, res) => {
   const token = req.cookies.token;
@@ -1780,11 +1723,6 @@ app.post('/changePassword', async (req, res) => {
   });
 });
 
-
-
-
-
-
 app.get('/user',(req,res)=>{
     const token = req.cookies.token;
     jwt.verify(token,"metagroupe",(err , decoded)=>{
@@ -1805,12 +1743,7 @@ app.get('/user',(req,res)=>{
         
     })
 
-})
-
-
-
-
-
+});
 
 app.get('/show_user',(req,res)=>{
   const token = req.cookies.token;
@@ -1832,7 +1765,7 @@ app.get('/show_user',(req,res)=>{
       
   })
 
-})
+});
 
 app.get('/user_p', (req, res) => {
   const token = req.cookies.token;
@@ -1855,8 +1788,6 @@ app.get('/user_p', (req, res) => {
   });
 });
 
-
-
 app.get('/user_pn', (req, res) => {
   const token = req.cookies.token;
   jwt.verify(token, "metagroupe", (err, decoded) => {
@@ -1878,29 +1809,37 @@ app.get('/user_pn', (req, res) => {
   });
 });
 
-
-
 app.post('/relance/:id', (req, res) => {
   const messageId = parseInt(req.params.id);
 
+  const token = req.cookies.token;
+const specificId = req.body.id;
+  console.log(specificId);
+  jwt.verify(token,"metagroupe",(err , decoded)=>{
+    if(err){
+return res.json({Message : "Auth err"});
+    }
+    else{
+        req.id = decoded.id;
+    }
+})
+const id = req.id;
   // Update the message status in the database
-  const query = 'UPDATE messages SET im = 1 , lu = 0 WHERE id_m= ? or grou_m = ?';
+  const query = 'UPDATE messages SET im = 1 , lu = 0,date = NOW() WHERE id_m= ? or grou_m = ? ';
 
   db.query(query, [messageId,messageId], (error, results) => {
     if (error) {
       console.error('Error updating message status:', error);
       res.status(500).json({ message: 'Internal server error' });
     } else {
+      io.emit('send', { idu: specificId }, () => {
+        // Le code ici s'exécute lorsque l'événement est émis
+
+      });
       res.status(200).json({ message: 'Message status updated successfully' });
     }
   });
 });
-
-
-
-
-
-
 
 app.post('/updateRabs', (req, res) => {
   const userId = req.params.userId;
@@ -1916,8 +1855,6 @@ app.post('/updateRabs', (req, res) => {
   });
 });
 
-
-
 app.post('/updateRNote', (req, res) => {
   const updateQuery = `UPDATE user SET r_note = 1 WHERE r_note = 0 AND role != 'Chef de Service'`;
 
@@ -1930,10 +1867,6 @@ app.post('/updateRNote', (req, res) => {
     }
   });
 });
-
-
-
-
 
 app.post('/form', (req, res) => {
   const token = req.cookies.token;
@@ -1950,6 +1883,8 @@ app.post('/form', (req, res) => {
   })
   const usertt = req.name;
   const id = req.id;
+  const specificId = req.body.id;
+  console.log(specificId);
   const { groupes, users, noms, fields,value1 } = req.body;
   const nn = noms.map((nom) => nom.name);
   const queryGroupe = 'INSERT INTO messages (id_r,username,id_u,usernameA,formulaire,objet) VALUES ?';
@@ -1992,7 +1927,12 @@ if (groupes && groupes.length > 0) {
                         console.error("Erreur lors de l'insertion des données :", error);
                         reject(error);
                       } else {
+
                         console.log('Données insérées avec succès dans la base de données.');
+                        io.emit('form&Sends', { idu: usertt }, () => {
+                          // Le code ici s'exécute lorsque l'événement est émis
+                  
+                        });
                         resolve();
                       }
                     });
@@ -2042,6 +1982,10 @@ if (groupes && groupes.length > 0) {
                     console.error("Erreur lors de l'insertion des données :", error);
                     reject(error);
                   } else {
+                    io.emit('form&Sends', { idu: usertt }, () => {
+                      // Le code ici s'exécute lorsque l'événement est émis
+              
+                    });
                     console.log('Données insérées avec succès dans la base de données.');
                     resolve();
                   }
@@ -2065,8 +2009,69 @@ if (groupes && groupes.length > 0) {
 
 });
 
+app.post('/trash/:id_m', (req, res) => {
+  const token = req.cookies.token;
+
+  
+  jwt.verify(token,"metagroupe",(err , decoded)=>{
+    if(err){
+return res.json({Message : "Auth err"});
+    }
+    else{
+        req.id = decoded.id;
+       
+    }
+})
+
+const id = req.id;
+const userId = req.params.id_m;
+  const sql = "UPDATE `messages` SET `lu`='1', im = 0 WHERE id_m= ? ";
+
+  const insertQuery = 'INSERT INTO del_m SELECT * FROM messages WHERE id_m = ?';
+  const deleteQuery = 'DELETE FROM messages WHERE id_m = ?';
+
+  db.query(insertQuery, [userId], (insertErr, insertResults) => {
+    if (insertErr) {
+      console.error('Erreur lors de l\'insertion des éléments dans la table "del_m" :', insertErr);
+      res.status(500).json({ error: 'Erreur serveur' });
+    } else {
+      db.query(deleteQuery, [userId], (deleteErr, deleteResults) => {
+        if (deleteErr) {
+          
+          console.error('Erreur lors de la suppression des éléments depuis la table "messages" :', deleteErr);
+          res.status(500).json({ error: 'Erreur serveur' });
+        } else {
+          io.emit('sup', { idu: id }, () => {
+            // Le code ici s'exécute lorsque l'événement est émis
+        
+          });
+          res.sendStatus(204);
+          
+        }
+      });
+    }
+  });
+});
+
 app.post('/trash', (req, res) => {
+
+  const token = req.cookies.token;
+  jwt.verify(token,"metagroupe",(err , decoded)=>{
+      if(err){
+  return res.json({Message : "Auth err"});
+      }
+      else{
+          req.name = decoded.name;
+          req.id = decoded.id;
+      }
+  })
+
+  const user = req.name;
+  const id = req.id;
+
+
   const checkedItemIds = req.body;
+  
   const insertQuery = 'INSERT INTO del_m SELECT * FROM messages WHERE id_m IN (?)';
   const deleteQuery = 'DELETE FROM messages WHERE id_m IN (?)';
 
@@ -2077,69 +2082,239 @@ app.post('/trash', (req, res) => {
     } else {
       db.query(deleteQuery, [checkedItemIds], (deleteErr, deleteResults) => {
         if (deleteErr) {
+          
           console.error('Erreur lors de la suppression des éléments depuis la table "messages" :', deleteErr);
           res.status(500).json({ error: 'Erreur serveur' });
         } else {
+          io.emit('sup', { idu: id }, () => {
+            // Le code ici s'exécute lorsque l'événement est émis
+        
+          });
           res.sendStatus(204);
+          
         }
       });
     }
   });
 });
 
+app.post('/save_del', (req, res) => {
 
-app.post('/save', (req, res) => {
+  const token = req.cookies.token;
+  jwt.verify(token,"metagroupe",(err , decoded)=>{
+      if(err){
+  return res.json({Message : "Auth err"});
+      }
+      else{
+          req.name = decoded.name;
+          req.id = decoded.id;
+      }
+  })
+
+  const user = req.name;
+  const id = req.id;
+
+
   const checkedItemIds = req.body;
-  const insertQuery = 'INSERT INTO save_m SELECT * FROM messages WHERE id_m IN (?)';
+  
+  const insertQuery = 'INSERT INTO del_m SELECT * FROM save_m WHERE id_m IN (?)';
+  const deleteQuery = 'DELETE FROM save_m WHERE id_m IN (?)';
+  const updateQuery = 'UPDATE messages SET save=0 WHERE id_m IN (?)';
 
-
-  db.query(insertQuery, [checkedItemIds], (insertErr, insertResults) => {
+  db.query(insertQuery, [checkedItemIds,checkedItemIds], (insertErr, insertResults) => {
     if (insertErr) {
       console.error('Erreur lors de l\'insertion des éléments dans la table "del_m" :', insertErr);
       res.status(500).json({ error: 'Erreur serveur' });
     } else {
 
+      db.query(updateQuery, [checkedItemIds], (updateErr, deleteResults) => {
+        if (updateErr) {
+          
+          console.error('Erreur lors de la suppression des éléments depuis la table "messages" :', deleteErr);
+          res.status(500).json({ error: 'Erreur serveur' });
+        } else {
+
+          
+      db.query(deleteQuery, [checkedItemIds], (deleteErr, deleteResults) => {
+        if (deleteErr) {
+          
+          console.error('Erreur lors de la suppression des éléments depuis la table "messages" :', deleteErr);
+          res.status(500).json({ error: 'Erreur serveur' });
+        } else {
+          io.emit('save_del', { idu: id }, () => {
+            // Le code ici s'exécute lorsque l'événement est émis
+        
+          });
           res.sendStatus(204);
+          
         }
       });
+        }
+      });
+
+    }
+  });
+});
+
+app.post('/save/:id_m', (req, res) => {
+  // Récupération du token JWT depuis les cookies
+  const token = req.cookies.token;
+
+  // Vérification du token JWT
+  jwt.verify(token, "metagroupe", (err, decoded) => {
+      if (err) {
+          return res.json({ Message: "Auth err" });
+      } else {
+          // Si le token est valide, l'ID décodé est attaché à la requête
+          req.id = decoded.id;
+      }
+  });
+
+  // Récupération des IDs de l'utilisateur et du message
+  const id = req.id;
+  const userId = req.params.id_m;
+
+  const insertQuery = 'INSERT INTO save_m SELECT * FROM messages WHERE id_m = ?';
+  const deleteQuery = 'UPDATE messages SET save = 1 WHERE id_m = ?';
+
+  db.query(insertQuery, [userId], (insertErr, insertResults) => {
+    if (insertErr) {
+      console.error('Erreur lors de l\'insertion des éléments dans la table "del_m" :', insertErr);
+      res.status(500).json({ error: 'Erreur serveur' });
+    } else {
+      db.query(deleteQuery, [userId], (deleteErr, deleteResults) => {
+        if (deleteErr) {
+          
+          console.error('Erreur lors de la suppression des éléments depuis la table "messages" :', deleteErr);
+          res.status(500).json({ error: 'Erreur serveur' });
+        } else {
+          io.emit('save1', { idu: id }, () => {
+            // Le code ici s'exécute lorsque l'événement est émis
+        
+          });
+          res.sendStatus(204);
+          
+        }
+      });
+    }
+  });
+});
+
+app.post('/save', (req, res) => {
+  const token = req.cookies.token;
+  const checkedItemIds = req.body;
+  
+  // Vérification du token JWT
+  jwt.verify(token, "metagroupe", (err, decoded) => {
+    if (err) {
+        return res.json({ Message: "Auth err" });
+    } else {
+        // Si le token est valide, l'ID décodé est attaché à la requête
+        req.id = decoded.id;
+    }
+});
+
+// Récupération des IDs de l'utilisateur et du message
+const id = req.id;
+  // Vérifie si le tableau est vide
+  if (checkedItemIds.length !== 0) {
+    const insertQuery = 'INSERT INTO save_m SELECT * FROM messages WHERE id_m IN (?)';
+    const deleteQuery = 'UPDATE messages SET save = 1 WHERE id_m IN (?)';
+
+    db.query(insertQuery, [checkedItemIds], (insertErr, insertResults) => {
+      if (insertErr) {
+        console.error('Erreur lors de l\'insertion des éléments dans la table "del_m" :', insertErr);
+        res.status(500).json({ error: 'Erreur serveur' });
+      } else {
+        db.query(deleteQuery, [checkedItemIds], (deleteErr, deleteResults) => {
+          if (deleteErr) {
+            
+            console.error('Erreur lors de la suppression des éléments depuis la table "messages" :', deleteErr);
+            res.status(500).json({ error: 'Erreur serveur' });
+          } else {
+            io.emit('nouvelUtilisateur', { idu: id }, () => {
+              // Le code ici s'exécute lorsque l'événement est émis
+          
+            });
+            res.sendStatus(204);
+            
+          }
+        });
+      }
     });
-
-
+  } else {
+    // Réponse si le tableau est vide
+    res.sendStatus(204);
+  }
+});
 
 app.post('/del', (req, res) => {
+  const token = req.cookies.token;
   const checkedItemIds = req.body;
+  
+  // Vérification du token JWT
+  jwt.verify(token, "metagroupe", (err, decoded) => {
+    if (err) {
+        return res.json({ Message: "Auth err" });
+    } else {
+        // Si le token est valide, l'ID décodé est attaché à la requête
+        req.id = decoded.id;
+    }
+});
+const id = req.id; // Vérifie si le tableau est vide
+
+// Récupération des IDs de l'utilisateur et du message
+console.log(checkedItemIds.length );
+  if (checkedItemIds.length !== 0) {
+ 
+    const query = `DELETE FROM del_m WHERE id_m IN (?); `;
+  db.query(query, [checkedItemIds], (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la suppression des éléments depuis la base de données :', err);
+      res.status(500).json({ error: 'Erreur serveur' });
+    } else {
+      io.emit('del', { idu: id }, () => {
+        // Le code ici s'exécute lorsque l'événement est émis
+    
+      });
+      res.sendStatus(204);
+    }
+  });
+}
+});
+
+app.post('/del_trash/:id_m', (req, res) => {
+  const token = req.cookies.token;
+
+  
+  jwt.verify(token,"metagroupe",(err , decoded)=>{
+    if(err){
+return res.json({Message : "Auth err"});
+    }
+    else{
+        req.id = decoded.id;
+       
+    }
+})
+
+const id = req.id;
+const userId = req.params.id_m;
   const query = `DELETE FROM del_m WHERE id_m IN (?); `;
-  
-  db.query(query, [checkedItemIds], (err, results) => {
+  db.query(query, [userId], (err, results) => {
     if (err) {
       console.error('Erreur lors de la suppression des éléments depuis la base de données :', err);
       res.status(500).json({ error: 'Erreur serveur' });
     } else {
+      io.emit('del', { idu: id }, () => {
+        // Le code ici s'exécute lorsque l'événement est émis
+    
+      });
       res.sendStatus(204);
     }
   });
 });
 
-
-app.post('/save_del', (req, res) => {
-  const checkedItemIds = req.body;
-  const query = `DELETE FROM save_m WHERE id_m IN (?); `;
-  
-  db.query(query, [checkedItemIds], (err, results) => {
-    if (err) {
-      console.error('Erreur lors de la suppression des éléments depuis la base de données :', err);
-      res.status(500).json({ error: 'Erreur serveur' });
-    } else {
-      res.sendStatus(204);
-    }
-  });
-});
-
-
-
-
-
-  app.post('/update_data', (req, res) => {
+app.post('/update_data', (req, res) => {
     const { code, nom, nomArabe } = req.body;
   console.log(nom);
     // Execute the query to update data in the database
@@ -2153,7 +2328,6 @@ app.post('/save_del', (req, res) => {
       res.json({ message: 'Data updated successfully' });
     });
   });
-
 
   app.post('/groups', async (req, res) => {
     try {
@@ -2197,9 +2371,7 @@ app.post('/save_del', (req, res) => {
       res.status(500).json({ error: 'An error occurred while creating the group' });
     }
   });
-  
-  
-  
+
   app.post('/addUser', (req, res) => {
     const { codeEtablissement, nomEtablissement } = req.body;
 
@@ -2228,137 +2400,144 @@ app.post('/save_del', (req, res) => {
     });
   });
 
+  app.post('/login', async (req, res) => {
+    const { user, password } = req.body;
 
+    const sql = 'SELECT * FROM user WHERE username = ?';
 
-  const password = 'gm'; // Remplacez 'motdepasse' par le mot de passe que vous souhaitez hacher.
+    db.query(sql, [user], async (err, data) => {
+        if (err) {
+            return res.status(500).json({ message: 'Server Side Error' });
+        }
 
-  // Générez un sel aléatoire pour le hachage.
-  const saltRounds = 10;
-  
-  // Utilisez la fonction 'hash' de bcrypt pour hacher le mot de passe.
-  bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
-      if (err) {
-          console.error('Erreur lors du hachage du mot de passe :', err);
-      } else {
-          console.log('Mot de passe haché :', hashedPassword);
-      }
-  });
-
-
-
-    app.post('/login', async (req, res) => {
-      const { user, password } = req.body;
-  
-      const sql = 'SELECT * FROM user WHERE username = ?';
-  
-      db.query(sql, [user], async (err, data) => {
-          if (err) {
-              return res.status(500).json({ message: 'Server Side Error' });
-          }
-  
-          if (data.length > 1) {
-              const hashedPassword = data[0].password;
+        if (data.length > 1) {
+            const hashedPassword = data[0].password;
 
 bcrypt.compare(password, hashedPassword, (err, result) => {
-    if (err) {
-        // Gestion des erreurs, par exemple, retournez une réponse d'erreur.
-        return res.status(500).json({ error: 'Internal Server Error'+err });
-    }
+  if (err) {
+      // Gestion des erreurs, par exemple, retournez une réponse d'erreur.
+      return res.status(500).json({ error: 'Internal Server Error'+err });
+  }
 
-    if (result) {
-      const name = data[0].username;
-      const id = data[0].id;
-      const payload = { name, id };
-      const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
-  
+  if (result) {
+    const name = data[0].username;
+    const id = data[0].id;
+    const payload = { name, id };
+    const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
 
     res.cookie('token',token, { httpOnly: true });
 
-  
-      return res.json({ Status: 'Success' });
-    }
+    const query = 'UPDATE `event` SET `date_c`=NOW() WHERE id = ?';
+   
+    
+    db.query(query, [id], (err, result) => {
+      if (err) {
+        console.error('Erreur lors de la conexion:', err);
+        res.status(500).json({ message: 'Erreur lors de la conexion' });
+      } else {
+        return res.json({ Status: 'Success' });
+      }
+    });
 
-    // Le mot de passe correspond au mot de passe haché.
-    // Maintenant, vous pouvez générer le jeton JWT et envoyer une réponse réussie.
+  }
+
+  // Le mot de passe correspond au mot de passe haché.
+  // Maintenant, vous pouvez générer le jeton JWT et envoyer une réponse réussie.
 
 
 
-              else {
+            else {
 console.log(2);
 
-            const hashedPassword2 = data[1].password2;
-            bcrypt.compare(password, hashedPassword2, (err, result) => {
+          const hashedPassword2 = data[1].password2;
+          bcrypt.compare(password, hashedPassword2, (err, result) => {
 
 if (result){
-  const name = data[1].username;
-  const id = data[1].id;
-  const payload = { name, id };
-  const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
-  
-    res.cookie('token', token, {domain: 'hserver-metagroupe.onrender.com',
-        maxAge: 900000,
-        httpOnly: true,
-            sameSite: 'none',
-                  secure: true });
+const name = data[1].username;
+const id = data[1].id;
+const payload = { name, id };
+const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
 
-  return res.json({ Status: 'Success' });
-}
-return res.json({ Message: 'incorect' });
-            }
-            )
-          
-              }
-            });
-
-
-
-          } else {
-            if (data.length == 1) {
-              const hashedPassword = data[0].password;
-              console.log(3);
-
+res.cookie('token', token);
+const query = 'UPDATE `event` SET `date_c`=NOW() WHERE id = ?';
+   
     
+db.query(query, [id], (err, result) => {
+  if (err) {
+    console.error('Erreur lors de la conexion: :', err);
+    res.status(500).json({ message: 'Erreur lors de la conexion' });
+  } else {
 
-              bcrypt.compare(password, hashedPassword, (err, result) => {
-                if (err) {
-                    // Gestion des erreurs, par exemple, retournez une réponse d'erreur.
-                    return res.status(500).json({ error: 'Internal Server Error' });
-                }
-            
-                if (result) {
-                  const name = data[0].username;
-                  const id = data[0].id;
-                  const payload = { name, id };
-                  const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
-              
+    return res.json({ Status: 'Success' });
+  }
+});
+}else{
+  return res.json({ Message: 'incorect' });
+}
 
-    res.cookie('token',token, { httpOnly: true });
-              
-                  return res.json({ Status: 'Success' });
-                }
-                else{
-                  return res.json({ Message: 'incorect' });
-                }
-            
-                // Le mot de passe correspond au mot de passe haché.
-                // Maintenant, vous pouvez générer le jeton JWT et envoyer une réponse réussie.
-            
-            
-      
-                        });
-                    
-            
-          }else{
-            return res.json({ Message: 'incorect' });
           }
-          }
-      });
-  });
+          
+          )
+          
+            }
+          
+          });
+
+
+
+        } else {
+          if (data.length == 1) {
+            const hashedPassword = data[0].password;
+            console.log(3);
+
   
 
+            bcrypt.compare(password, hashedPassword, (err, result) => {
+              if (err) {
+                  // Gestion des erreurs, par exemple, retournez une réponse d'erreur.
+                  return res.status(500).json({ error: 'Internal Server Error' });
+              }
+          
+              if (result) {
+                const name = data[0].username;
+                const id = data[0].id;
+                const payload = { name, id };
+                const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
+            
+                res.cookie('token', token);
+            
+                const query = 'UPDATE `event` SET `date_c`=NOW() WHERE id = ?';
+   
+    
+                db.query(query, [id], (err, result) => {
+                  if (err) {
+                    console.error('Erreur lors de l\'ajout des utilisateurs au groupe :', err);
+                    res.status(500).json({ message: 'Erreur lors de l\'ajout des utilisateurs au groupe' });
+                  } else {
 
-
-
+                    return res.json({ Status: 'Success' });
+                  }
+                });
+            
+              }
+              else{
+                return res.json({ Message: 'incorect' });
+              }
+          
+              // Le mot de passe correspond au mot de passe haché.
+              // Maintenant, vous pouvez générer le jeton JWT et envoyer une réponse réussie.
+          
+          
+    
+                      });
+                  
+          
+        }else{
+          return res.json({ Message: 'incorect' });
+        }
+        }
+    });
+});
 
 app.get('/info_u',(req,res)=>{
     const token = req.cookies.token;
@@ -2384,8 +2563,6 @@ app.get('/info_u',(req,res)=>{
 
 })
 
-
-
 app.get('/info_cant', (req, res) => {
   const token = req.cookies.token;
   jwt.verify(token, "metagroupe", (err, decoded) => {
@@ -2406,11 +2583,7 @@ app.get('/info_cant', (req, res) => {
     if (err) return res.json(data);
     return res.json(data) || [];
   })
-})
-
-
-
-
+});
 
 app.post('/utilisateurs_groupes', (req, res) => {
   const usersToAdd = req.body;
@@ -2427,7 +2600,6 @@ app.post('/utilisateurs_groupes', (req, res) => {
     }
   });
 });
-
 
 app.get('/groupeL',(req,res)=>{
     const token = req.cookies.token;
@@ -2452,12 +2624,38 @@ app.get('/groupeL',(req,res)=>{
 })
 
 app.get('/logout',(req,res) => {
-    res.clearCookie('token');
-    return res.json({Status :"Success"});
+
+    const token = req.cookies.token;
+    jwt.verify(token,"metagroupe",(err , decoded)=>{
+        if(err){
+    return res.json({Message : "Auth err"});
+        }
+        else{
+            req.name = decoded.name;
+            req.id = decoded.id;
+        }
+    })
+
+    const id = req.id;
+    const query = 'UPDATE `event` SET `date_d`=NOW() WHERE id = ?';
+   
+    
+    db.query(query, [id], (err, result) => {
+      if (err) {
+        console.error('Erreur lors de l\'ajout des utilisateurs au groupe :', err);
+        res.status(500).json({ message: 'Erreur lors de l\'ajout des utilisateurs au groupe' });
+      } else {
+        console.log('Utilisateurs ajoutés au groupe avec succès');
+        res.clearCookie('token');
+        return res.json({Status :"Success"});
+      }
+    });
+
+
 
 })
 
-
-app.listen(8081,()=> {
-    console.log("Running new 11 .....");
-})
+const PORT = 8081;
+server.listen(PORT, () => {
+  console.log(`Serveur démarré sur le port ${PORT}`);
+});
