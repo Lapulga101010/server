@@ -2271,12 +2271,8 @@ bcrypt.compare(password, hashedPassword, (err, result) => {
       const payload = { name, id };
       const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
   
-    res.cookie('token', token, {domain: 'hserver-metagroupe.onrender.com',
-        maxAge: 900000,
-        httpOnly: true,
-            sameSite: 'none',
-                  secure: true });
 
+    res.cookie('token',token, { httpOnly: true });
 
   
       return res.json({ Status: 'Success' });
@@ -2335,11 +2331,8 @@ return res.json({ Message: 'incorect' });
                   const payload = { name, id };
                   const token = jwt.sign(payload, 'metagroupe', { expiresIn: '1d' });
               
-    res.cookie('token', token, {domain: 'hserver-metagroupe.onrender.com',
-        maxAge: 900000,
-        httpOnly: true,
-            sameSite: 'none',
-                  secure: true });
+
+    res.cookie('token',token, { httpOnly: true });
               
                   return res.json({ Status: 'Success' });
                 }
