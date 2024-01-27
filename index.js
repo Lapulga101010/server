@@ -2407,7 +2407,7 @@ app.post('/update_data', (req, res) => {
 
     db.query(sql, [user], async (err, data) => {
         if (err) {
-            return res.status(500).json({ message: 'Server Side Error' });
+            return res.status(500).json({ message: 'Server Side Error 1' });
         }
 
         if (data.length > 1) {
@@ -2416,7 +2416,7 @@ app.post('/update_data', (req, res) => {
 bcrypt.compare(password, hashedPassword, (err, result) => {
   if (err) {
       // Gestion des erreurs, par exemple, retournez une réponse d'erreur.
-      return res.status(500).json({ error: 'Internal Server Error'+err });
+      return res.status(500).json({ error: 'Internal Server Error 2'+err });
   }
 
   if (result) {
