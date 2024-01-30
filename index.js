@@ -34,7 +34,7 @@ const db = mysql.createConnection({
 
 const io = socketIo(server, {
   cors: {
-    origin: "http://89.116.38.84",
+    origin: "https://tensikde.net",
     methods: ["GET", "POST","DELETE"]
   }
 });
