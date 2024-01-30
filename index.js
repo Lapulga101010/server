@@ -25,11 +25,12 @@ app.use(cors({
 
 
 const db = mysql.createConnection({
-  host: "de06.net",
-  user: "yvzmfbmz_yvzmfbmz",
-  password: "Metagroupe@",
-  database: "yvzmfbmz_de06",
+  host: "89.116.38.84",
+  user: "Metagroupe2",
+  password: "Metagroupe@1997",
+  database: "tensikde",
 });
+
 
 
 const io = socketIo(server, {
@@ -50,6 +51,8 @@ io.on('connection', (socket) => {
     console.log('Socket déconnectée.');
   });
 });
+
+
 
 
 
@@ -123,7 +126,7 @@ app.get('/messages', (req, res) => {
       const user = decoded.name;
       const id = decoded.id;
       const sql =
-        'SELECT * FROM messages INNER JOIN etab ON tensikde.messages.usernameA = etab.CODETAB WHERE tensikde.messages.id_r = ? ORDER BY date DESC ';
+        'SELECT * FROM tensikde.messages INNER JOIN etab ON tensikde.messages.usernameA = etab.CODETAB WHERE tensikde.messages.id_r = ? ORDER BY date DESC ';
         db.query(sql,[id],(err,data)=>{
           if(err) return res.json(data);
           return res.json(data)|| [];
