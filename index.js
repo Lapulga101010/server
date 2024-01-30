@@ -52,6 +52,61 @@ io.on('connection', (socket) => {
 });
 
 
+
+app.get('/vider', (req, res) => {
+  const dossierUpload = 'upload'; // Remplacez par le chemin réel
+
+  // Récupérez la liste des fichiers dans le dossier "upload"
+  const fichiersDansLeDossier = fs.readdirSync(dossierUpload);
+
+  // Récupérez la liste des fichiers dans la base de données
+  const query = 'SELECT file FROM messages';
+  db.query(query, (err, result) => {
+    if (err) {
+      console.error('Erreur lors de la récupération des fichiers depuis la base de données:', err);
+      res.status(500).send('Erreur du serveur');
+    } else {
+      const fichiersDansLaBase = result.map((row) => row.file);
+
+      // Comparez les deux listes de fichiers
+      const fichiersNonReferencies = fichiersDansLeDossier.filter(
+        (fichier) => !fichiersDansLaBase.includes(fichier)
+      );
+
+      // Supprimez les fichiers non référencés
+      fichiersNonReferencies.forEach((fichier) => {
+        const cheminFichier = path.join(dossierUpload, fichier);
+        fs.unlinkSync(cheminFichier);
+        console.log(`Fichier supprimé : ${fichier}`);
+      });
+
+      res.send('Fichiers supprimés avec succès');
+    }
+  });
+});
+
+
+app.get('/download/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'upload', filename);
+
+  // Check if the file exists
+  if (fs.existsSync(filePath)) {
+    // Set appropriate headers for the response
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+
+    // Pipe the file stream to the response
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } else {
+    // File not found
+    res.status(404).send('File not found');
+  }
+});
+
+
+
 app.get('/messages', (req, res) => {
   const token = req.cookies.token;
   if (!token) {
@@ -68,7 +123,7 @@ app.get('/messages', (req, res) => {
       const user = decoded.name;
       const id = decoded.id;
       const sql =
-        'SELECT * FROM messages INNER JOIN etab ON messages.usernameA = etab.CODETAB WHERE messages.id_r = ? ORDER BY date DESC ';
+        'SELECT * FROM messages INNER JOIN etab ON tensikde.messages.usernameA = etab.CODETAB WHERE tensikde.messages.id_r = ? ORDER BY date DESC ';
         db.query(sql,[id],(err,data)=>{
           if(err) return res.json(data);
           return res.json(data)|| [];
@@ -128,26 +183,24 @@ console.log(filePath);
 
 
 app.post("/send", upload.single("file"), (req, res) => {
-  
   const token = req.cookies.token;
   jwt.verify(token, "metagroupe", (err, decoded) => {
-    
     if (err) {
       return res.json({ Message: "Authentification erreur" });
     } else {
+      // Extracted variables from the request
       req.name = decoded.name;
       req.id = decoded.id;
-
-      console.log();
       const usertt = req.name;
       const id = req.id;
       const { data } = req.body;
-      const { users, groupes, noms, value1, value2,file } = JSON.parse(data); 
+      const { users, groupes, noms, value1, value2, file } = JSON.parse(data);
       const nn = noms.map((nom) => nom.name);
+      const role = noms.map((nom) => nom.role);
 
-      // Insérer les données dans la base de données
+      // Database queries
       const query =
-        "INSERT INTO messages (de, id_r, username, id_u, usernameA, nom, objet, message, grou_m, file) VALUES ?";
+        "INSERT INTO tensikde.messages (role, de, id_r, username, id_u, usernameA, nom, objet, message, grou_m, file) SELECT role ,?,?,?,?,?,?,?,?,?,? FROM user where id = ?";
       const values = users.map((user) => [
         id,
         user.id,
@@ -158,12 +211,14 @@ app.post("/send", upload.single("file"), (req, res) => {
         value1,
         value2,
         null,
-        file, // Access the uploaded file's name here
+        file,
+        id
       ]);
 
       const queryGroupe =
-        "INSERT INTO messages (username, id_r, id_u, usernameA, objet, message, grou_m, nom, groupe,file) SELECT username, id, ?, ?, ?, ?, ?, ?, ? ,?  FROM `user_group_relationship` WHERE group_id = ?";
-      const queryGroupe2 = "INSERT INTO groupe_m (messs) VALUES (?)";
+        "INSERT INTO tensikde.messages (username, id_r, id_u, usernameA, objet, message, grou_m, nom, groupe, file) SELECT username, id, ?, ?, ?, ?, ?, ?, ?, ? FROM `user_group_relationship` WHERE group_id = ?";
+      const queryGroupe2 =
+        "INSERT INTO tensikde.groupe_m (messs) VALUES (?)";
 
       let groupesProcessed = false;
       let usersProcessed = false;
@@ -174,8 +229,8 @@ app.post("/send", upload.single("file"), (req, res) => {
         }
       }
 
+      // Handling groupes
       if (groupes && groupes.length > 0) {
-        console.log('groupe');
         db.query(queryGroupe2, id, (error, results) => {
           if (error) {
             console.error(
@@ -184,7 +239,6 @@ app.post("/send", upload.single("file"), (req, res) => {
             );
             res.sendStatus(500);
           } else {
-            console.log("Données insérées avec succès.");
             const dernierId = results.insertId;
             const valuesG = groupes.map((groupe) => [
               id,
@@ -197,54 +251,51 @@ app.post("/send", upload.single("file"), (req, res) => {
               file,
               groupe.id
             ]);
-            groupes.forEach((groupe) => console.log(groupe.id));
+
             db.query(queryGroupe, valuesG.flat(), (error, results) => {
               if (error) {
                 console.error(
                   "Une erreur s'est produite lors de l'insertion des données :",
                   error
                 );
-                // Only set groupesProcessed flag, do not send the response here
                 groupesProcessed = true;
                 sendResponse();
               } else {
                 console.log("Données insérées avec succès.");
                 io.emit('nouvelUtilisateur');
                 groupesProcessed = true;
-                sendResponse(); // Send the response here
+                sendResponse();
               }
             });
           }
         });
       } else {
         groupesProcessed = true;
-        sendResponse(); // Send the response here
+        sendResponse();
       }
 
+      // Handling users
       if (users && users.length > 0) {
-        db.query(query, [values], (error, results) => {
+        db.query(query, values.flat(), (error, results) => {
           if (error) {
             console.error(
               "Une erreur s'est produite lors de l'insertion des données :",
               error
             );
-            // Only set usersProcessed flag, do not send the response here
             usersProcessed = true;
             sendResponse();
           } else {
             console.log("Données insérées avec succès.");
             io.emit('form&Sends', { idu: users.map((user) => user.id) }, () => {
               // Le code ici s'exécute lorsque l'événement est émis
-      
             });
-          
             usersProcessed = true;
-            sendResponse(); // Send the response here
+            sendResponse();
           }
         });
       } else {
         usersProcessed = true;
-        sendResponse(); // Send the response here
+        sendResponse();
       }
     }
   });
@@ -1275,7 +1326,7 @@ app.get('/messagesS' ,(req,res)=>{
         }
     })
 const user = req.id;
-    const sql="SELECT * FROM `messages` INNER JOIN etab ON messages.username = etab.CODETAB WHERE messages.id_u = ? and  messages.formulaire = 0 order by date DESC ";
+    const sql="SELECT * FROM `messages` INNER JOIN etab ON messages.username = etab.CODETAB WHERE messages.id_u = ? AND messages.formulaire IS NULL ORDER BY date DESC";
     db.query(sql,[user],(err,data)=>{
         if(err) return res.json(data);
         return res.json(data)|| [];
@@ -1343,7 +1394,7 @@ app.get('/form_down' ,(req,res)=>{
       }
   })
 const user = req.name;
-  const sql="SELECT * FROM `messages` INNER JOIN etab ON messages.username = etab.CODETAB INNER JOIN valform ON messages.id_m=valform.id_m WHERE messages.usernameA = ? and  messages.formulaire != 0 order by date DESC ";
+  const sql="SELECT * FROM `messages` INNER JOIN etab ON messages.username = etab.CODETAB INNER JOIN valform ON messages.id_m=valform.id_m WHERE messages.usernameA = ? and  messages.formulaire IS NOT NULL order by date DESC ";
   db.query(sql,[user],(err,data)=>{
       if(err) return res.json(data);
       return res.json(data)|| [];
@@ -1583,12 +1634,17 @@ app.post('/val/:id_m', (req, res) => {
           }
 
           // Both the INSERT and UPDATE queries were successful
+          io.emit('valForm', { idu: userId }, () => {
+            // Le code ici s'exécute lorsque l'événement est émis
+        
+          });
           return res.json({ Message: "Data inserted and updated successfully" });
         });
       });
     }
   });
 });
+
 
 app.post('/mes_del/:id_m', (req, res) => {
 
@@ -1736,7 +1792,7 @@ app.get('/user',(req,res)=>{
     })
 
     const user = req.name;
-    const sql="SELECT * FROM user INNER JOIN etab ON user.username = etab.CODETAB WHERE username !=?";
+    const sql="SELECT * FROM tensikde.user INNER JOIN etab ON user.username = etab.CODETAB WHERE username !=?";
     db.query(sql,[user],(err,data)=>{
         if(err) return res.json(data);
         return res.json(data) || [];
@@ -1887,10 +1943,10 @@ app.post('/form', (req, res) => {
   console.log(specificId);
   const { groupes, users, noms, fields,value1 } = req.body;
   const nn = noms.map((nom) => nom.name);
-  const queryGroupe = 'INSERT INTO messages (id_r,username,id_u,usernameA,formulaire,objet) VALUES ?';
+  const queryGroupe = 'INSERT INTO messages (role,id_r,username,id_u,usernameA,formulaire,objet)  SELECT role ,?,?,?,?,?,? FROM user where id = ?';
   const queryGroupe3 = 'INSERT INTO messages (username, id_r ,id_u, usernameA ,formulaire, grou_m,objet,groupe) SELECT username, id,?, ?, ?, ?, ?,? FROM `user_group_relationship` WHERE  group_id = ?';
   const queryGroupe2 = 'INSERT INTO groupe_m (messs) VALUES (?)';
-  const values = users.map((user) => [user.id,user.username,id,usertt,'1',value1]);
+  const values = users.map((user) => [user.id,user.username,id,usertt,'1',value1,id]);
   const valuesG2 = groupes.map((groupe) => [usertt,groupe.id,'1', groupe.id]);
   let groupesProcessed = false;
   let usersProcessed = false;
@@ -1929,9 +1985,8 @@ if (groupes && groupes.length > 0) {
                       } else {
 
                         console.log('Données insérées avec succès dans la base de données.');
-                        io.emit('form&Sends', { idu: usertt }, () => {
+                        io.emit('form&Sends', { idu: users.map((user) => user.id) }, () => {
                           // Le code ici s'exécute lorsque l'événement est émis
-                  
                         });
                         resolve();
                       }
@@ -1959,7 +2014,7 @@ if (groupes && groupes.length > 0) {
     if (users && users.length > 0) {
 
 
-    db.query(queryGroupe, [values], (error, results) => {
+    db.query(queryGroupe, values.flat(), (error, results) => {
       if (error) {
         console.error("Une erreur s'est produite lors de l'insertion des données :", error);
         res.sendStatus(500);
@@ -1982,9 +2037,8 @@ if (groupes && groupes.length > 0) {
                     console.error("Erreur lors de l'insertion des données :", error);
                     reject(error);
                   } else {
-                    io.emit('form&Sends', { idu: usertt }, () => {
+                    io.emit('form&Sends', { idu: users.map((user) => user.id) }, () => {
                       // Le code ici s'exécute lorsque l'événement est émis
-              
                     });
                     console.log('Données insérées avec succès dans la base de données.');
                     resolve();
@@ -2407,7 +2461,7 @@ app.post('/update_data', (req, res) => {
 
     db.query(sql, [user], async (err, data) => {
         if (err) {
-            return res.status(500).json({ message: 'Server Side Error 1' });
+            return res.status(500).json({ message: 'Server Side Error' });
         }
 
         if (data.length > 1) {
@@ -2416,7 +2470,7 @@ app.post('/update_data', (req, res) => {
 bcrypt.compare(password, hashedPassword, (err, result) => {
   if (err) {
       // Gestion des erreurs, par exemple, retournez une réponse d'erreur.
-      return res.status(500).json({ error: 'Internal Server Error 2'+err });
+      return res.status(500).json({ error: 'Internal Server Error'+err });
   }
 
   if (result) {
@@ -2614,7 +2668,7 @@ app.get('/groupeL',(req,res)=>{
     })
 
     const user = req.name;
-    const sql="SELECT id,name FROM groups";
+    const sql="SELECT * FROM tensikde.groups";
     db.query(sql,[user],(err,data)=>{
         if(err) return res.json(data);
         return res.json(data) || [];
