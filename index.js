@@ -2,8 +2,6 @@
 const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const app = express();
 const PORT = 3000;
@@ -24,25 +22,25 @@ const db = mysql.createConnection({
     database: "myapp",
 });
 
-db.connect(err => {
+// Connecter à la base de données
+db.connect((err) => {
   if (err) {
-    console.error('Erreur de connexion à la base de données:', err);
-  } else {
-    console.log('Connecté à la base de données MySQL');
+    console.error('Error connecting to the database:', err);
+    return;
   }
+  console.log('Connected to the MySQL database.');
 });
-console.log(db.state);
 
 // Route pour vérifier l'état du serveur
 app.get('/check-server', (req, res) => {
-  if (db.state === 'connected') {
+  
     res.json({ status: 'connected' });
-  } else {
-    res.json({ status: 'not connected' });
-  }
+  
+
 });
 
-// Démarrage du serveur
+
+// Démarrer le serveur
 app.listen(PORT, () => {
-  console.log(`Serveur en écoute sur le port ${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
