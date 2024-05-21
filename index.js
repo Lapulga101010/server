@@ -32,6 +32,7 @@ db.connect(err => {
   }
 });
 console.log(db.state);
+
 // Route pour vérifier l'état du serveur
 app.get('/check-server', (req, res) => {
   if (db.state === 'connected') {
@@ -42,6 +43,6 @@ app.get('/check-server', (req, res) => {
 });
 
 // Démarrage du serveur
-app.listen(port, () => {
-  console.log(`Serveur en écoute sur le port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Serveur en écoute sur le port ${PORT}`);
 });
