@@ -10,12 +10,11 @@ app.use(cors()); // Ajout du middleware CORS
 
 // Configuration de la connexion MySQL
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'myapp'
+  host: "89.116.38.84",
+  user: "Metagroupe2",
+  password: "Metagroupe@1997",
+  database: "tensikde",
 });
-
 db.connect((err) => {
   if (err) throw err;
   console.log('Connected to database');
