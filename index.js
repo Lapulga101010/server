@@ -37,7 +37,7 @@ const secretKey = 'your_secret_key';
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
 
-  connection.query('SELECT * FROM users WHERE username = ?', [username], (err, results) => {
+  connection.query('SELECT * FROM user WHERE username = ?', [username], (err, results) => {
     if (err) {
       return res.status(500).json({ error: 'Internal server error' });
     }
