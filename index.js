@@ -61,7 +61,17 @@ app.get('/checkSession', (req, res) => {
     res.send({ loggedIn: false });
   }
 });
+// server.js
 
+// Endpoint pour récupérer les informations de l'utilisateur connecté
+app.get('/getUserInfo', (req, res) => {
+    if (req.session.user) {
+      res.send({ user: req.session.user });
+    } else {
+      res.status(401).send({ message: 'User not logged in' });
+    }
+  });
+  
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
