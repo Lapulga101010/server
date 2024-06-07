@@ -1,73 +1,62 @@
 const express = require('express');
-const mysql = require('mysql2');
-const bodyParser = require('body-parser');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const session = require('express-session');
+const mysql = require('mysql');
 const cors = require('cors');
+
 const app = express();
-app.use(bodyParser.json());
-app.use(cors()); // Ajout du middleware CORS
+const PORT = process.env.PORT || 3000;
 
-// Configuration de la connexion MySQL
+// Middleware
+app.use(express.json());
+app.use(cors());
+app.use(session({
+  secret: 'your-secret-key',
+  resave: false,
+  saveUninitialized: true
+}));
+
+// Connexion à la base de données MySQL
 const db = mysql.createConnection({
-  host: "89.116.38.84",
-  user: "Metagroupe2",
-  password: "Metagroupe@1997",
-  database: "tensikde",
+  host: 'sql7.freesqldatabase.com',
+  user: 'sql7712441',
+  password: '5tFX2gy6vL',
+  database: 'sql7712441'
 });
+
 db.connect((err) => {
-  if (err) throw err;
-  console.log('Connected to database');
+  if (err) {
+    throw err;
+  }
+  console.log('Connected to MySQL database');
 });
 
-// Route d'inscription
-app.post('/register', (req, res) => {
-  const { username, password } = req.body;
-  const hashedPassword = bcrypt.hashSync(password, 10);
 
-  const sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
-  db.query(sql, [username, hashedPassword], (err, result) => {
-    if (err) throw err;
-    res.json({ message: 'User registered' });
-  });
-});
 
 // Route de connexion
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
-
-  const sql = 'SELECT * FROM users WHERE username = ?';
-  db.query(sql, [username], (err, results) => {
-    if (err) throw err;
-    if (results.length === 0) return res.status(401).json({ message: 'User not found' });
-
-    const user = results[0];
-    const isPasswordValid = bcrypt.compareSync(password, user.password);
-    if (!isPasswordValid) return res.status(401).json({ message: 'Invalid password' });
-
-    const token = jwt.sign({ id: user.id }, 'secret_key', { expiresIn: '1h' });
-    res.json({ message: 'Login successful', token });
+  const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
+  db.query(query, [username, password], (err, result) => {
+    if (err) {
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    } else if (result.length === 1) {
+      req.session.user = result[0];
+      res.status(200).json({ success: true, message: 'Login successful', user: result[0] });
+    } else {
+      res.status(401).json({ success: false, message: 'Invalid username or password' });
+    }
   });
 });
 
-// Middleware de vérification du token
-const authenticateToken = (req, res, next) => {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(403).json({ message: 'No token provided' });
-
-  jwt.verify(token, 'secret_key', (err, user) => {
-    if (err) return res.status(401).json({ message: 'Invalid token' });
-    req.user = user;
-    next();
-  });
-};
-
-// Route de déconnexion
-app.post('/logout', authenticateToken, (req, res) => {
-  // Invalider le token côté client
-  res.json({ message: 'Logout successful' });
+// Route de vérification de la session
+app.get('/checkSession', (req, res) => {
+  if (req.session.user) {
+    res.status(200).json({ success: true, user: req.session.user });
+  } else {
+    res.status(401).json({ success: false, message: 'User not logged in' });
+  }
 });
 
-app.listen(3000, () => {
-  console.log('Server running on port 3000');
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
