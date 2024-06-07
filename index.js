@@ -1,62 +1,98 @@
 const express = require('express');
-const session = require('express-session');
+const bodyParser = require('body-parser');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const mysql = require('mysql');
-const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = 3000;
 
 // Middleware
-app.use(express.json());
-app.use(cors());
-app.use(session({
-  secret: 'your-secret-key',
-  resave: false,
-  saveUninitialized: true
-}));
+app.use(bodyParser.json());
 
-// Connexion à la base de données MySQL
-const db = mysql.createConnection({
-  host: 'sql7.freesqldatabase.com',
-  user: 'sql7712441',
-  password: '5tFX2gy6vL',
-  database: 'sql7712441'
-});
-
-db.connect((err) => {
-  if (err) {
-    throw err;
-  }
-  console.log('Connected to MySQL database');
+// MySQL connection
+const connection = mysql.createConnection({
+    host: 'sql7.freesqldatabase.com',
+    user: 'sql7712441',
+    password: '5tFX2gy6vL',
+    database: 'sql7712441'
 });
 
 
+connection.connect((err) => {
+    if (err) {
+      console.error('Error connecting to database:', err.stack);
+      return;
+    }
+  
+    console.log('Connected to database as id', connection.threadId);
+  });
+  
+// JWT secret key
+const secretKey = 'your_secret_key';
 
-// Route de connexion
+// API endpoints
+
+// User login
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
-  const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
-  db.query(query, [username, password], (err, result) => {
+
+  connection.query('SELECT * FROM users WHERE username = ?', [username], (err, results) => {
     if (err) {
-      res.status(500).json({ success: false, message: 'Internal server error' });
-    } else if (result.length === 1) {
-      req.session.user = result[0];
-      res.status(200).json({ success: true, message: 'Login successful', user: result[0] });
-    } else {
-      res.status(401).json({ success: false, message: 'Invalid username or password' });
+      return res.status(500).json({ error: 'Internal server error' });
     }
+
+    if (results.length === 0) {
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+
+    const user = results[0];
+
+    bcrypt.compare(password, user.password, (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      if (!result) {
+        return res.status(401).json({ error: 'Invalid username or password' });
+      }
+
+      // Create JWT token
+      const token = jwt.sign({ userId: user.id, username: user.username }, secretKey, { expiresIn: '1h' });
+
+      res.json({ token });
+    });
   });
 });
 
-// Route de vérification de la session
-app.get('/checkSession', (req, res) => {
-  if (req.session.user) {
-    res.status(200).json({ success: true, user: req.session.user });
-  } else {
-    res.status(401).json({ success: false, message: 'User not logged in' });
+// Middleware to verify JWT token
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
+
+  jwt.verify(token, secretKey, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    req.userId = decoded.userId;
+    next();
+  });
+};
+
+// Protected route example
+app.get('/profile', verifyToken, (req, res) => {
+  // Retrieve user profile based on userId from decoded token
+  const userId = req.userId;
+
+  // Query user profile from database using userId
+
+  res.json({ userId });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
